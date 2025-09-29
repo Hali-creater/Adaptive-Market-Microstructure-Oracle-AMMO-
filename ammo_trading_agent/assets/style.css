@@ -1,0 +1,46 @@
+/* assets/style.css */
+
+/* --- General Styling --- */
+body {
+    font-family: 'sans serif';
+}
+
+/* --- Streamlit Component Styling --- */
+
+/* Main content area */
+.stApp {
+    background-color: #FFFFFF;
+}
+
+/* Sidebar styling */
+.st-emotion-cache-16txtl3 {
+    background-color: #F0F2F6;
+}
+
+/* Button styling */
+.stButton>button {
+    border-radius: 20px;
+    border: 1px solid #F63366;
+    color: #F63366;
+    background-color: #FFFFFF;
+}
+
+.stButton>button:hover {
+    border-color: #F63366;
+    color: #FFFFFF;
+    background-color: #F63366;
+}
+
+/* Metric styling */
+.st-emotion-cache-1g8m2i4 {
+    border: 1px solid #F0F2F6;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+/* Custom header for recommendation */
+h3 span {
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 10px;
+}
