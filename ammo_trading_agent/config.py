@@ -2,7 +2,7 @@
 
 import os
 from dotenv import load_dotenv
-from .utils.helpers import setup_logging
+from utils.helpers import setup_logging
 
 logger = setup_logging()
 

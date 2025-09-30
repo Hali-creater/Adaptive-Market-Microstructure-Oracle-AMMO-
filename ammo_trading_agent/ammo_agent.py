@@ -1,7 +1,7 @@
 # ammo_agent.py
 
-from .modules import DataCollector, SentimentAnalyzer, PersonalityDetector, RiskManager
-from .utils.helpers import setup_logging
+from modules import DataCollector, SentimentAnalyzer, PersonalityDetector, RiskManager
+from utils.helpers import setup_logging
 
 logger = setup_logging()
 

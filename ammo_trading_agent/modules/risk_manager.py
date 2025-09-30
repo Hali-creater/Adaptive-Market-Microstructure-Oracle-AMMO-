@@ -1,7 +1,7 @@
 # modules/risk_manager.py
 
-from ..utils.constants import MAX_RISK_PER_TRADE, MAX_DRAWDOWN
-from ..utils.helpers import setup_logging, format_currency
+from utils.constants import MAX_RISK_PER_TRADE, MAX_DRAWDOWN
+from utils.helpers import setup_logging, format_currency
 
 logger = setup_logging()
 

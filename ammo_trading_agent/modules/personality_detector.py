@@ -2,8 +2,8 @@
 
 import pandas as pd
 import numpy as np
-from ..utils.constants import MARKET_PERSONALITIES
-from ..utils.helpers import setup_logging
+from utils.constants import MARKET_PERSONALITIES
+from utils.helpers import setup_logging
 
 logger = setup_logging()
 

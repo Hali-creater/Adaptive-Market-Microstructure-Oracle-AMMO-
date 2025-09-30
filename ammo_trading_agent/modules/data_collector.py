@@ -3,8 +3,8 @@
 import pandas as pd
 import numpy as np
 import requests
-from ..config import ALPHA_VANTAGE_API_KEY
-from ..utils.helpers import setup_logging
+from config import ALPHA_VANTAGE_API_KEY
+from utils.helpers import setup_logging
 
 logger = setup_logging()
 
