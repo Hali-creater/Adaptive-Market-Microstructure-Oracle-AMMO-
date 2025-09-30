@@ -3,6 +3,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import os
 
 from ammo_agent import AmmoAgent
 from config import APP_TITLE
@@ -25,7 +26,10 @@ def load_css(file_name):
     except FileNotFoundError:
         st.warning(f"CSS file not found: {file_name}. Using default styles.")
 
-load_css("assets/style.css")
+# Construct path to CSS file to be robust for local and cloud deployment
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+CSS_FILE = os.path.join(APP_DIR, "assets", "style.css")
+load_css(CSS_FILE)
 
 # --- Main Application ---
 
