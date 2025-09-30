@@ -2,8 +2,8 @@
 
 import random
 import requests
-from ..config import NEWS_API_KEY
-from ..utils.helpers import setup_logging
+from config import NEWS_API_KEY
+from utils.helpers import setup_logging
 
 logger = setup_logging()
 
