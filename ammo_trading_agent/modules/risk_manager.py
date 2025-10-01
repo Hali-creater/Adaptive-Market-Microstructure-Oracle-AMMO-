@@ -36,23 +36,52 @@ class RiskManager:
         Returns:
             int: The number of shares to buy. Returns 0 if risk is too high or prices are invalid.
         """
-        if entry_price <= 0 or stop_loss_price <= 0 or stop_loss_price >= entry_price:
-            logger.warning("Invalid entry or stop-loss price. Cannot calculate position size.")
+        if entry_price <= 0 or stop_loss_price <= 0:
+            logger.warning("Invalid entry or stop-loss price (must be > 0). Cannot calculate position size.")
             return 0
 
         # Amount to risk per trade in currency
         risk_amount = self.portfolio_value * self.max_risk_per_trade
 
-        # Risk per share
-        risk_per_share = entry_price - stop_loss_price
+        # Risk per share (absolute difference)
+        risk_per_share = abs(entry_price - stop_loss_price)
 
         if risk_per_share <= 0:
+            logger.warning("Entry price and stop-loss price cannot be the same.")
             return 0
 
         position_size = int(risk_amount / risk_per_share)
 
         logger.info(f"Calculated position size: {position_size} shares.")
         return position_size
+
+    def calculate_target_price(self, entry_price: float, stop_loss_price: float, risk_reward_ratio: float = 2.0) -> float:
+        """
+        Calculates the target price for a trade to achieve a specific risk/reward ratio.
+
+        Args:
+            entry_price (float): The price at which the asset is bought or sold short.
+            stop_loss_price (float): The price at which the trade will be exited to limit losses.
+            risk_reward_ratio (float): The desired ratio of reward to risk (e.g., 2.0 for a 1:2 ratio).
+
+        Returns:
+            float: The calculated target price. Returns 0 if prices are invalid.
+        """
+        risk_per_share = abs(entry_price - stop_loss_price)
+        if risk_per_share <= 0:
+            return 0
+
+        reward_per_share = risk_per_share * risk_reward_ratio
+
+        # For a long position (buy), the stop-loss is below the entry price
+        if entry_price > stop_loss_price:
+            target_price = entry_price + reward_per_share
+        # For a short position (sell), the stop-loss is above the entry price
+        else:
+            target_price = entry_price - reward_per_share
+
+        logger.info(f"Calculated target price: {format_currency(target_price)} for a 1:{risk_reward_ratio} risk/reward.")
+        return target_price
 
     def check_drawdown(self, current_portfolio_value: float) -> bool:
         """
