@@ -52,8 +52,17 @@ with st.sidebar:
     analyze_button = st.button("Analyze Market", use_container_width=True)
 
 # --- Initialize Agent in Session State ---
-if "agent" not in st.session_state:
+AGENT_VERSION = 2.0 # Match this with the version in AmmoAgent
+
+# Re-initialize the agent if it's not in the session state or if the version is outdated
+if (
+    "agent" not in st.session_state
+    or not hasattr(st.session_state.agent, "_version")
+    or st.session_state.agent._version < AGENT_VERSION
+):
     st.session_state.agent = AmmoAgent(portfolio_value=portfolio_value)
+    st.session_state.results = None # Clear previous results
+
 if "results" not in st.session_state:
     st.session_state.results = None
 
