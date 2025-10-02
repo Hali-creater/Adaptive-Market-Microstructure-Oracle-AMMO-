@@ -42,6 +42,11 @@ st.markdown("An AI-powered agent for market analysis and trading recommendations
 with st.sidebar:
     st.header("Settings")
     symbol = st.text_input("Stock Symbol", value=DEFAULT_SYMBOL).upper()
+    time_frame = st.selectbox(
+        "Time Frame",
+        ("Daily", "Weekly", "Intraday (60min)"),
+        index=0  # Default to Daily
+    )
     portfolio_value = st.number_input("Portfolio Value ($)", min_value=1000.0, value=100000.0, step=1000.0)
 
     analyze_button = st.button("Analyze Market", use_container_width=True)
@@ -57,7 +62,7 @@ if analyze_button:
     with st.spinner(f"AMMO Agent is analyzing {symbol}..."):
         # Update agent with the latest portfolio value from sidebar
         st.session_state.agent.risk_manager.portfolio_value = portfolio_value
-        st.session_state.results = st.session_state.agent.run_analysis(symbol)
+        st.session_state.results = st.session_state.agent.run_analysis(symbol, time_frame)
 
 # --- Display Results ---
 if st.session_state.results:
@@ -69,11 +74,17 @@ if st.session_state.results:
         # --- Summary Header ---
         st.header(f"Analysis for {results['symbol']}")
 
-        rec_color = "red" if "SELL" in results['recommendation'] else "green" if "BUY" in results['recommendation'] else "orange"
+        recommendation = results['recommendation']
+        signal = recommendation['signal']
+        reason = recommendation['reason']
+        should_trade = recommendation['should_trade']
 
-        st.markdown(f"""
-        ### **Recommendation: <span style='color:{rec_color};'>{results['recommendation']}</span>**
-        """)
+        rec_color = "red" if "SELL" in signal else "green" if "BUY" in signal else "orange"
+
+        st.markdown(f"### **Recommendation: <span style='color:{rec_color};'>{signal}</span>**", unsafe_allow_html=True)
+
+        # --- Satisfaction Note / Reason ---
+        st.info(f"**Trade Rationale:** {reason}")
 
         # --- Key Metrics ---
         col1, col2, col3 = st.columns(3)
@@ -94,26 +105,32 @@ if st.session_state.results:
         ))
         fig.update_layout(
             xaxis_rangeslider_visible=False,
-            title=f"{results['symbol']} Daily Price",
+            title=f"{results['symbol']} {time_frame} Price",
             xaxis_title="Date",
             yaxis_title="Price (USD)"
         )
         st.plotly_chart(fig, use_container_width=True)
 
         # --- Detailed Analysis Tabs ---
-        tab1, tab2, tab3 = st.tabs(["Sentiment Analysis", "Risk Assessment", "Raw Data"])
+        tab1, tab2, tab3 = st.tabs(["Risk Assessment", "Sentiment Details", "Raw Data"])
 
         with tab1:
-            st.subheader("Sentiment Analysis")
-            st.write(results['sentiment']['summary'])
+            st.subheader("Trade Execution Plan")
+            risk = results['risk_assessment']
+
+            if should_trade:
+                st.write(f"**Portfolio Value:** {format_currency(risk['portfolio_value'])}")
+                st.write(f"**Suggested Position Size:** {risk['position_size']} shares")
+                st.write(f"**Suggested Stop-Loss Price:** {format_currency(risk['stop_loss_price'])}")
+                st.write(f"**Suggested Target Price:** {format_currency(risk['target_price'])}")
+                st.write(f"**Risk/Reward Ratio:** {risk['risk_reward_ratio']}")
+                st.info("This is a simplified risk assessment based on a 2% portfolio risk per trade.")
+            else:
+                st.success("No trade is recommended, so no risk parameters have been calculated.")
 
         with tab2:
-            st.subheader("Risk Assessment")
-            risk = results['risk_assessment']
-            st.write(f"**Portfolio Value:** {format_currency(risk['portfolio_value'])}")
-            st.write(f"**Suggested Position Size:** {risk['position_size']} shares")
-            st.write(f"**Suggested Stop-Loss Price:** {format_currency(risk['stop_loss_price'])}")
-            st.info("This is a simplified risk assessment based on a 2% portfolio risk per trade.")
+            st.subheader("Sentiment Analysis Details")
+            st.write(results['sentiment']['summary'])
 
         with tab3:
             st.subheader("Raw Price Data")
