@@ -17,6 +17,7 @@ class AmmoAgent:
         Initializes the agent and its modules.
         """
         logger.info("Initializing AMMO Trading Agent...")
+        self._version = 2.0
         self.data_collector = DataCollector()
         self.sentiment_analyzer = SentimentAnalyzer()
         self.personality_detector = PersonalityDetector()
