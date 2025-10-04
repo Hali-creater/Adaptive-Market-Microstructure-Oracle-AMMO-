@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import requests
-from config import ALPHA_VANTAGE_API_KEY, is_simulation_mode
 from utils.helpers import setup_logging
 
 logger = setup_logging()
@@ -14,11 +13,12 @@ class DataCollector:
     For this example, we'll use Alpha Vantage.
     """
 
-    def __init__(self):
-        self.api_key = ALPHA_VANTAGE_API_KEY
+    def __init__(self, config):
+        self.config = config
+        self.api_key = self.config.ALPHA_VANTAGE_API_KEY
         self.base_url = "https://www.alphavantage.co/query"
-        if is_simulation_mode():
-            logger.warning("DataCollector is in simulation mode due to missing API keys.")
+        if self.config.is_simulation_mode():
+            logger.warning("DataCollector is in simulation mode.")
 
     def get_price_data(self, symbol: str, time_frame: str, output_size: str = "compact") -> pd.DataFrame:
         """
@@ -32,7 +32,7 @@ class DataCollector:
         Returns:
             pd.DataFrame: A DataFrame with historical price data, or an empty DataFrame on error.
         """
-        if is_simulation_mode():
+        if self.config.is_simulation_mode():
             return self._get_simulated_data(symbol, time_frame)
 
         # Map user-friendly time frame to API parameters
