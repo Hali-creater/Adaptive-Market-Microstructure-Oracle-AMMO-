@@ -26,6 +26,19 @@ class Config:
             self._initialized = True
             logger.info("Initializing configuration...")
 
+            # --- DIAGNOSTIC LOGGING ---
+            if hasattr(st, 'secrets'):
+                logger.info("--- DIAGNOSTICS: st.secrets is available ---")
+                try:
+                    # Log all top-level keys to understand the structure
+                    logger.info(f"Available keys in st.secrets: {st.secrets.keys()}")
+                except Exception as e:
+                    logger.error(f"Error during diagnostic logging of st.secrets: {e}")
+                logger.info("--- END DIAGNOSTICS ---")
+            else:
+                logger.info("--- DIAGNOSTICS: st.secrets is NOT available ---")
+            # --- END DIAGNOSTIC LOGGING ---
+
             # Load .env file for local development
             self._load_dotenv()
 
