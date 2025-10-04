@@ -7,61 +7,74 @@ from utils.helpers import setup_logging
 
 logger = setup_logging()
 
-# --- Load Environment Variables ---
-
-# Load from .env file if it exists (for local development)
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-    logger.info(".env file found and loaded.")
-
-# --- API Key Management ---
-
-def get_secret(secret_name: str, fallback_env_var: str) -> str:
+class Config:
     """
-    Fetches a secret from Streamlit's secrets manager with a fallback to environment variables.
-    Gracefully handles cases where secrets are not configured.
+    A centralized configuration class to manage settings and API keys.
+    This class defers the loading of secrets until it is instantiated,
+    preventing import-time errors in Streamlit Cloud.
     """
-    try:
-        # The 'in' operator on st.secrets can raise an error if the secrets file doesn't exist.
-        if hasattr(st, 'secrets') and secret_name in st.secrets:
-            return st.secrets[secret_name]
-    except Exception:
-        # If st.secrets is not configured, it can raise an exception.
-        # We'll ignore it and fall back to env vars.
-        logger.info("Could not access Streamlit secrets. Falling back to .env or environment variables.")
-        pass
+    _instance = None
 
-    # Fallback to environment variable
-    return os.getenv(fallback_env_var)
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Config, cls).__new__(cls)
+        return cls._instance
 
-# API Keys from Streamlit secrets or .env file
-ALPHA_VANTAGE_API_KEY = get_secret("ALPHA_VANTAGE_API_KEY", "ALPHA_VANTAGE_API_KEY")
-NEWS_API_KEY = get_secret("NEWS_API_KEY", "NEWS_API_KEY")
-ALPACA_API_KEY = get_secret("ALPACA_API_KEY", "ALPACA_API_KEY")
-ALPACA_SECRET_KEY = get_secret("ALPACA_SECRET_KEY", "ALPACA_SECRET_KEY")
-ALPACA_BASE_URL = get_secret("ALPACA_BASE_URL", "ALPACA_BASE_URL") or "https://paper-api.alpaca.markets"
+    def __init__(self):
+        # This check ensures that the initialization logic runs only once
+        if not hasattr(self, '_initialized'):
+            self._initialized = True
+            logger.info("Initializing configuration...")
 
-# --- Application Settings ---
-APP_TITLE = "AMMO Trading Agent"
+            # Load .env file for local development
+            self._load_dotenv()
 
-# --- Mode Validation ---
+            # --- API Keys ---
+            self.ALPHA_VANTAGE_API_KEY = self._get_secret("ALPHA_VANTAGE_API_KEY")
+            self.NEWS_API_KEY = self._get_secret("NEWS_API_KEY")
+            self.ALPACA_API_KEY = self._get_secret("ALPACA_API_KEY")
+            self.ALPACA_SECRET_KEY = self._get_secret("ALPACA_SECRET_KEY")
+            self.ALPACA_BASE_URL = self._get_secret("ALPACA_BASE_URL") or "https://paper-api.alpaca.markets"
 
-def is_simulation_mode() -> bool:
-    """
-    Checks if the application is running in simulation mode due to missing API keys.
-    Returns True if any key is missing, False otherwise.
-    """
-    if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
-        logger.warning("ALPHA_VANTAGE_API_KEY is not configured.")
-        return True
-    if not NEWS_API_KEY or NEWS_API_KEY == "YOUR_NEWS_API_KEY":
-        logger.warning("NEWS_API_KEY is not configured.")
-        return True
-    return False
+            # --- Application Settings ---
+            self.APP_TITLE = "AMMO Trading Agent"
 
-# Log the current operating mode
-if is_simulation_mode():
-    logger.warning("Application is running in SIMULATION MODE due to missing API keys.")
-else:
-    logger.info("All API keys are configured. Application is running in LIVE MODE.")
+            # Log the operating mode
+            if self.is_simulation_mode():
+                logger.warning("Application is running in SIMULATION MODE.")
+            else:
+                logger.info("All API keys are configured. Application is in LIVE MODE.")
+
+    def _load_dotenv(self):
+        """Loads environment variables from a .env file if it exists."""
+        dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+        if os.path.exists(dotenv_path):
+            load_dotenv(dotenv_path)
+            logger.info(".env file found and loaded for local development.")
+
+    def _get_secret(self, secret_name: str) -> str:
+        """
+        Fetches a secret from Streamlit's secrets manager with a fallback to environment variables.
+        """
+        try:
+            # Prefer Streamlit's secrets manager
+            if hasattr(st, 'secrets') and secret_name in st.secrets:
+                return st.secrets[secret_name]
+        except Exception:
+            logger.warning(f"Could not access Streamlit secrets for '{secret_name}'. Falling back to environment variables.")
+
+        # Fallback to environment variable
+        return os.getenv(secret_name)
+
+    def is_simulation_mode(self) -> bool:
+        """
+        Checks if the application should run in simulation mode due to missing API keys.
+        """
+        if not self.ALPHA_VANTAGE_API_KEY or self.ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
+            return True
+        if not self.NEWS_API_KEY or self.NEWS_API_KEY == "YOUR_NEWS_API_KEY":
+            return True
+        return False
+
+# The Config class should be instantiated at runtime in the main app,
+# not at import time.

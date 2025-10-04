@@ -2,7 +2,6 @@
 
 import random
 import requests
-from config import NEWS_API_KEY, is_simulation_mode
 from utils.helpers import setup_logging
 
 logger = setup_logging()
@@ -13,11 +12,12 @@ class SentimentAnalyzer:
     For this example, we'll simulate sentiment analysis.
     """
 
-    def __init__(self):
-        self.api_key = NEWS_API_KEY
+    def __init__(self, config):
+        self.config = config
+        self.api_key = self.config.NEWS_API_KEY
         self.base_url = "https://newsapi.org/v2/everything"
-        if is_simulation_mode():
-            logger.warning("SentimentAnalyzer is in simulation mode due to missing API keys.")
+        if self.config.is_simulation_mode():
+            logger.warning("SentimentAnalyzer is in simulation mode.")
 
     def get_market_sentiment(self, symbol: str) -> dict:
         """
@@ -30,7 +30,7 @@ class SentimentAnalyzer:
             dict: A dictionary containing the sentiment score and a summary.
                   Example: {"sentiment_score": 0.7, "summary": "Positive news..."}
         """
-        if is_simulation_mode():
+        if self.config.is_simulation_mode():
             return self._get_simulated_sentiment(symbol)
 
         params = {

@@ -6,13 +6,19 @@ import plotly.graph_objects as go
 import os
 
 from ammo_agent import AmmoAgent
-from config import APP_TITLE, is_simulation_mode
+from config import Config
 from utils.helpers import format_currency
 from utils.constants import DEFAULT_SYMBOL
 
+# --- Initialize Config in Session State ---
+# This ensures the config is loaded only once per session, at runtime.
+if 'config' not in st.session_state:
+    st.session_state.config = Config()
+config = st.session_state.config
+
 # --- Page Configuration ---
 st.set_page_config(
-    page_title=APP_TITLE,
+    page_title=config.APP_TITLE,
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -35,11 +41,11 @@ load_css(CSS_FILE)
 
 # --- Header ---
 # st.image("assets/logo.png", width=100) # Uncomment when you add logo.png
-st.title(APP_TITLE)
+st.title(config.APP_TITLE)
 st.markdown("An AI-powered agent for market analysis and trading recommendations.")
 
 # --- Simulation Mode Warning ---
-if is_simulation_mode():
+if config.is_simulation_mode():
     st.warning(
         "**Operating in Simulation Mode**\n\n"
         "You are seeing simulated data because one or more API keys are missing. "
@@ -68,7 +74,7 @@ if (
     or not hasattr(st.session_state.agent, "_version")
     or st.session_state.agent._version < AGENT_VERSION
 ):
-    st.session_state.agent = AmmoAgent(portfolio_value=portfolio_value)
+    st.session_state.agent = AmmoAgent(config=config, portfolio_value=portfolio_value)
     st.session_state.results = None # Clear previous results
 
 if "results" not in st.session_state:
