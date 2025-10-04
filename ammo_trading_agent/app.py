@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import os
 
 from ammo_agent import AmmoAgent
-from config import APP_TITLE
+from config import APP_TITLE, is_simulation_mode
 from utils.helpers import format_currency
 from utils.constants import DEFAULT_SYMBOL
 
@@ -37,6 +37,14 @@ load_css(CSS_FILE)
 # st.image("assets/logo.png", width=100) # Uncomment when you add logo.png
 st.title(APP_TITLE)
 st.markdown("An AI-powered agent for market analysis and trading recommendations.")
+
+# --- Simulation Mode Warning ---
+if is_simulation_mode():
+    st.warning(
+        "**Operating in Simulation Mode**\n\n"
+        "You are seeing simulated data because one or more API keys are missing. "
+        "To use live market data, please configure your secrets."
+    )
 
 # --- Sidebar for User Inputs ---
 with st.sidebar:
