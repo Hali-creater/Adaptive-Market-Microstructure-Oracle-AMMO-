@@ -39,11 +39,15 @@ class AmmoAgent:
         logger.info(f"--- Starting {time_frame} Analysis for {symbol} ---")
 
         # 1. Collect Data
-        price_data = self.data_collector.get_price_data(symbol, time_frame, output_size="compact")
+        price_data, error_message = self.data_collector.get_price_data(symbol, time_frame, output_size="compact")
+        if error_message:
+            logger.error(f"Data collection failed for {symbol} ({time_frame}): {error_message}")
+            return {"error": error_message}
+
         if price_data.empty:
-            logger.error(f"Failed to collect data for {symbol} ({time_frame}). Aborting analysis.")
+            logger.error(f"Data collection for {symbol} ({time_frame}) returned an empty DataFrame without an error message.")
             return {
-                "error": f"Could not retrieve {time_frame} price data for {symbol}. The symbol may be invalid or the API may be unavailable."
+                "error": f"Could not retrieve {time_frame} price data for {symbol}. The symbol may be invalid or the API returned no data."
             }
 
         latest_price = price_data['close'].iloc[-1]
