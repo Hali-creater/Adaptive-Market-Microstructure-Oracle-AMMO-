@@ -3,7 +3,6 @@ streamlit
 pandas
 numpy
 requests
-finnhub-python
 
 # For data visualization (optional but recommended)
 plotly

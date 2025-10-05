@@ -44,10 +44,10 @@ st.markdown("Enter your API keys below to connect to live data sources.")
 
 col1, col2 = st.columns(2)
 with col1:
-    finnhub_api_key = st.text_input(
-        "Finnhub API Key",
+    alpha_vantage_key = st.text_input(
+        "Alpha Vantage API Key",
         type="password",
-        help="Get a free key from [Finnhub](https://finnhub.io/register)"
+        help="Get a free key from [Alpha Vantage](https://www.alphavantage.co/support/#api-key)"
     )
 with col2:
     news_api_key = st.text_input(
@@ -57,12 +57,12 @@ with col2:
     )
 
 # Store keys in session state to persist them
-if finnhub_api_key:
-    st.session_state.finnhub_api_key = finnhub_api_key
+if alpha_vantage_key:
+    st.session_state.alpha_vantage_key = alpha_vantage_key
 if news_api_key:
     st.session_state.news_api_key = news_api_key
 
-keys_provided = hasattr(st.session_state, 'finnhub_api_key') and hasattr(st.session_state, 'news_api_key')
+keys_provided = hasattr(st.session_state, 'alpha_vantage_key') and hasattr(st.session_state, 'news_api_key')
 
 # --- Sidebar for User Inputs ---
 with st.sidebar:
@@ -90,7 +90,7 @@ if "results" not in st.session_state:
 if analyze_button:
     # When the button is clicked, create a config object with the user-provided keys
     config = Config(
-        finnhub_api_key=st.session_state.get('finnhub_api_key'),
+        alpha_vantage_api_key=st.session_state.get('alpha_vantage_key'),
         news_api_key=st.session_state.get('news_api_key')
     )
 
