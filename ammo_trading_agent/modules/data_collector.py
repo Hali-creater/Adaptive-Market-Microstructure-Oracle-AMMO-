@@ -24,93 +24,70 @@ class DataCollector:
         self.api_key = self.config.FINNHUB_API_KEY
         self.finnhub_client = None
         if not self.config.is_simulation_mode():
-            try:
-                self.finnhub_client = finnhub.Client(api_key=self.api_key)
-                # Test the API key by making a simple call
-                self.finnhub_client.company_profile2(symbol='AAPL')
-                logger.info("Finnhub client initialized and API key validated successfully.")
-            except Exception as e:
-                logger.error(f"Failed to initialize Finnhub client or validate API key: {e}. Check if the key is valid.")
-                self.finnhub_client = None # Invalidate client if key is bad
+            self.finnhub_client = finnhub.Client(api_key=self.api_key)
+            logger.info("Finnhub client initialized.")
         else:
             logger.warning("DataCollector is in simulation mode due to missing API keys.")
 
-    def get_price_data(self, symbol: str, time_frame: str, output_size: str = "compact") -> pd.DataFrame:
+    def get_price_data(self, symbol: str, time_frame: str, output_size: str = "compact") -> tuple[pd.DataFrame, str | None]:
         """
         Fetches historical stock prices for a given symbol using the Finnhub API.
 
         Args:
             symbol (str): The stock symbol (e.g., "AAPL").
             time_frame (str): "Daily", "Weekly", or "Intraday (60min)".
-            output_size (str): This argument is kept for compatibility but is not directly used
-                               by the Finnhub implementation, which uses date ranges.
+            output_size (str): Kept for compatibility, not directly used by Finnhub.
 
         Returns:
-            pd.DataFrame: A DataFrame with historical price data, or an empty DataFrame on error.
+            A tuple containing:
+                - pd.DataFrame: A DataFrame with historical price data, or an empty DataFrame on error.
+                - str | None: An error message string if an error occurred, otherwise None.
         """
         if self.config.is_simulation_mode() or self.finnhub_client is None:
-            return self._get_simulated_data(symbol, time_frame)
+            df, err = self._get_simulated_data(symbol, time_frame)
+            return df, err
 
-        # Map our time frames to Finnhub's resolutions
-        resolution_map = {
-            "Daily": "D",
-            "Weekly": "W",
-            "Intraday (60min)": "60"
-        }
+        resolution_map = {"Daily": "D", "Weekly": "W", "Intraday (60min)": "60"}
         resolution = resolution_map.get(time_frame)
         if not resolution:
-            logger.error(f"Invalid time frame specified: {time_frame}")
-            return pd.DataFrame()
+            msg = f"Invalid time frame specified: {time_frame}"
+            logger.error(msg)
+            return pd.DataFrame(), msg
 
-        # Define date ranges for the API call
         to_date = datetime.now()
-        if time_frame == "Intraday (60min)":
-            # Fetch last 30 days for intraday
-            from_date = to_date - timedelta(days=30)
-        else:
-            # Fetch last 365 days for daily/weekly
-            from_date = to_date - timedelta(days=365)
-
-        from_unix = int(from_date.timestamp())
-        to_unix = int(to_date.timestamp())
+        from_date = to_date - timedelta(days=30 if time_frame == "Intraday (60min)" else 365)
+        from_unix, to_unix = int(from_date.timestamp()), int(to_date.timestamp())
 
         try:
             logger.info(f"Fetching {time_frame} data for {symbol} from Finnhub...")
             res = self.finnhub_client.stock_candles(symbol, resolution, from_unix, to_unix)
 
-            if res['s'] != 'ok' or not res.get('c'):
-                logger.error(f"Finnhub returned no data or an error for {symbol}: {res}")
-                return pd.DataFrame()
+            if res.get('s') != 'ok' or not res.get('c'):
+                error_msg = f"Finnhub API returned no data for {symbol}. This could be due to an invalid symbol or an API key with insufficient permissions for this data."
+                logger.error(f"Finnhub error for {symbol}: {res}")
+                return pd.DataFrame(), error_msg
 
             df = pd.DataFrame(res)
-
-            # Rename columns to the standard format used by the application
-            df.rename(columns={
-                'o': 'open',
-                'h': 'high',
-                'l': 'low',
-                'c': 'close',
-                'v': 'volume',
-                't': 'time'
-            }, inplace=True)
-
-            # Convert Unix timestamp to datetime and set as index
+            df.rename(columns={'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume', 't': 'time'}, inplace=True)
             df['time'] = pd.to_datetime(df['time'], unit='s')
             df.set_index('time', inplace=True)
-
-            # Drop the status column 's'
             df.drop('s', axis=1, inplace=True)
 
             logger.info(f"Successfully fetched {len(df)} data points for {symbol}.")
-            return df.astype(float)
+            return df.astype(float), None
 
+        except finnhub.FinnhubAPIException as e:
+            error_msg = f"Finnhub API error for {symbol}: {e}. Please check if the symbol is correct and your API key is valid."
+            logger.error(error_msg)
+            return pd.DataFrame(), error_msg
         except Exception as e:
-            logger.error(f"An error occurred while fetching data from Finnhub for {symbol}: {e}")
-            return pd.DataFrame()
+            error_msg = f"An unexpected error occurred while fetching data from Finnhub for {symbol}: {e}"
+            logger.error(error_msg)
+            return pd.DataFrame(), error_msg
 
-    def _get_simulated_data(self, symbol: str, time_frame: str) -> pd.DataFrame:
+    def _get_simulated_data(self, symbol: str, time_frame: str) -> tuple[pd.DataFrame, str | None]:
         """
-        Generates fake market data for demonstration purposes.
+        Generates fake market data and matches the return signature of get_price_data.
         """
         logger.info(f"Generating simulated {time_frame} data for {symbol}.")
         dates = pd.to_datetime(pd.date_range(end=pd.Timestamp.today(), periods=100))
@@ -122,5 +99,4 @@ class DataCollector:
             "close": prices,
             "volume": np.random.randint(1_000_000, 10_000_000, size=100),
         }
-        df = pd.DataFrame(data, index=dates)
-        return df
+        return pd.DataFrame(data, index=dates), None
