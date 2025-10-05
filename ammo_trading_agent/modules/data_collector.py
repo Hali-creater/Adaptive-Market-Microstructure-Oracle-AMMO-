@@ -2,96 +2,111 @@
 
 import pandas as pd
 import numpy as np
-import requests
+import finnhub
+from datetime import datetime, timedelta
 from utils.helpers import setup_logging
 
 logger = setup_logging()
 
 class DataCollector:
     """
-    Collects market data from various sources.
-    For this example, we'll use Alpha Vantage.
+    Collects market data using the Finnhub API.
     """
 
     def __init__(self, config):
+        """
+        Initializes the DataCollector with the given configuration.
+
+        Args:
+            config: The configuration object containing API keys.
+        """
         self.config = config
-        self.api_key = self.config.ALPHA_VANTAGE_API_KEY
-        self.base_url = "https://www.alphavantage.co/query"
-        if self.config.is_simulation_mode():
-            logger.warning("DataCollector is in simulation mode.")
+        self.api_key = self.config.FINNHUB_API_KEY
+        self.finnhub_client = None
+        if not self.config.is_simulation_mode():
+            try:
+                self.finnhub_client = finnhub.Client(api_key=self.api_key)
+                # Test the API key by making a simple call
+                self.finnhub_client.company_profile2(symbol='AAPL')
+                logger.info("Finnhub client initialized and API key validated successfully.")
+            except Exception as e:
+                logger.error(f"Failed to initialize Finnhub client or validate API key: {e}. Check if the key is valid.")
+                self.finnhub_client = None # Invalidate client if key is bad
+        else:
+            logger.warning("DataCollector is in simulation mode due to missing API keys.")
 
     def get_price_data(self, symbol: str, time_frame: str, output_size: str = "compact") -> pd.DataFrame:
         """
-        Fetches stock prices for a given symbol and time frame.
+        Fetches historical stock prices for a given symbol using the Finnhub API.
 
         Args:
             symbol (str): The stock symbol (e.g., "AAPL").
             time_frame (str): "Daily", "Weekly", or "Intraday (60min)".
-            output_size (str): "compact" for last 100 data points, "full" for full history.
+            output_size (str): This argument is kept for compatibility but is not directly used
+                               by the Finnhub implementation, which uses date ranges.
 
         Returns:
             pd.DataFrame: A DataFrame with historical price data, or an empty DataFrame on error.
         """
-        if self.config.is_simulation_mode():
+        if self.config.is_simulation_mode() or self.finnhub_client is None:
             return self._get_simulated_data(symbol, time_frame)
 
-        # Map user-friendly time frame to API parameters
-        time_frame_map = {
-            "Daily": {"function": "TIME_SERIES_DAILY_ADJUSTED", "key": "Time Series (Daily)"},
-            "Weekly": {"function": "TIME_SERIES_WEEKLY_ADJUSTED", "key": "Weekly Adjusted Time Series"},
-            "Intraday (60min)": {"function": "TIME_SERIES_INTRADAY", "key": "Time Series (60min)", "interval": "60min"},
+        # Map our time frames to Finnhub's resolutions
+        resolution_map = {
+            "Daily": "D",
+            "Weekly": "W",
+            "Intraday (60min)": "60"
         }
-
-        if time_frame not in time_frame_map:
+        resolution = resolution_map.get(time_frame)
+        if not resolution:
             logger.error(f"Invalid time frame specified: {time_frame}")
             return pd.DataFrame()
 
-        api_params = time_frame_map[time_frame]
-        params = {
-            "function": api_params["function"],
-            "symbol": symbol,
-            "outputsize": output_size,
-            "apikey": self.api_key,
-        }
-        if "interval" in api_params:
-            params["interval"] = api_params["interval"]
+        # Define date ranges for the API call
+        to_date = datetime.now()
+        if time_frame == "Intraday (60min)":
+            # Fetch last 30 days for intraday
+            from_date = to_date - timedelta(days=30)
+        else:
+            # Fetch last 365 days for daily/weekly
+            from_date = to_date - timedelta(days=365)
+
+        from_unix = int(from_date.timestamp())
+        to_unix = int(to_date.timestamp())
 
         try:
-            response = requests.get(self.base_url, params=params)
-            response.raise_for_status()
-            data = response.json()
+            logger.info(f"Fetching {time_frame} data for {symbol} from Finnhub...")
+            res = self.finnhub_client.stock_candles(symbol, resolution, from_unix, to_unix)
 
-            data_key = api_params["key"]
-            if data_key not in data:
-                logger.error(f"Could not fetch {time_frame} data for {symbol}. Response: {data}")
+            if res['s'] != 'ok' or not res.get('c'):
+                logger.error(f"Finnhub returned no data or an error for {symbol}: {res}")
                 return pd.DataFrame()
 
-            df = pd.DataFrame.from_dict(data[data_key], orient="index")
+            df = pd.DataFrame(res)
 
-            # Standardize column names - they vary slightly across API endpoints
-            rename_map = {
-                "1. open": "open",
-                "2. high": "high",
-                "3. low": "low",
-                "4. close": "close",
-                "5. volume": "volume", # For Intraday
-                "6. volume": "volume", # For Daily/Weekly Adjusted
-            }
-            df.rename(columns=rename_map, inplace=True)
+            # Rename columns to the standard format used by the application
+            df.rename(columns={
+                'o': 'open',
+                'h': 'high',
+                'l': 'low',
+                'c': 'close',
+                'v': 'volume',
+                't': 'time'
+            }, inplace=True)
 
-            # Ensure we have a standard set of columns
-            standard_columns = ["open", "high", "low", "close", "volume"]
-            df = df[[col for col in standard_columns if col in df.columns]]
+            # Convert Unix timestamp to datetime and set as index
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+            df.set_index('time', inplace=True)
 
-            df.index = pd.to_datetime(df.index)
-            df = df.astype(float).sort_index()
-            return df
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching data for {symbol}: {e}")
+            # Drop the status column 's'
+            df.drop('s', axis=1, inplace=True)
+
+            logger.info(f"Successfully fetched {len(df)} data points for {symbol}.")
+            return df.astype(float)
+
+        except Exception as e:
+            logger.error(f"An error occurred while fetching data from Finnhub for {symbol}: {e}")
             return pd.DataFrame()
-        except (ValueError, KeyError) as e:
-             logger.error(f"Error processing data for {symbol}: {e}. API Response: {data}")
-             return pd.DataFrame()
 
     def _get_simulated_data(self, symbol: str, time_frame: str) -> pd.DataFrame:
         """

@@ -10,15 +10,9 @@ from config import Config
 from utils.helpers import format_currency
 from utils.constants import DEFAULT_SYMBOL
 
-# --- Initialize Config in Session State ---
-# This ensures the config is loaded only once per session, at runtime.
-if 'config' not in st.session_state:
-    st.session_state.config = Config()
-config = st.session_state.config
-
 # --- Page Configuration ---
 st.set_page_config(
-    page_title=config.APP_TITLE,
+    page_title="AMMO Trading Agent",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -41,16 +35,34 @@ load_css(CSS_FILE)
 
 # --- Header ---
 # st.image("assets/logo.png", width=100) # Uncomment when you add logo.png
-st.title(config.APP_TITLE)
+st.title("AMMO Trading Agent")
 st.markdown("An AI-powered agent for market analysis and trading recommendations.")
 
-# --- Simulation Mode Warning ---
-if config.is_simulation_mode():
-    st.warning(
-        "**Operating in Simulation Mode**\n\n"
-        "You are seeing simulated data because one or more API keys are missing. "
-        "To use live market data, please configure your secrets."
+# --- API Key Inputs ---
+st.subheader("API Configuration")
+st.markdown("Enter your API keys below to connect to live data sources.")
+
+col1, col2 = st.columns(2)
+with col1:
+    finnhub_api_key = st.text_input(
+        "Finnhub API Key",
+        type="password",
+        help="Get a free key from [Finnhub](https://finnhub.io/register)"
     )
+with col2:
+    news_api_key = st.text_input(
+        "NewsAPI Key",
+        type="password",
+        help="Get a free key from [NewsAPI.org](https://newsapi.org/)"
+    )
+
+# Store keys in session state to persist them
+if finnhub_api_key:
+    st.session_state.finnhub_api_key = finnhub_api_key
+if news_api_key:
+    st.session_state.news_api_key = news_api_key
+
+keys_provided = hasattr(st.session_state, 'finnhub_api_key') and hasattr(st.session_state, 'news_api_key')
 
 # --- Sidebar for User Inputs ---
 with st.sidebar:
@@ -63,29 +75,30 @@ with st.sidebar:
     )
     portfolio_value = st.number_input("Portfolio Value ($)", min_value=1000.0, value=100000.0, step=1000.0)
 
-    analyze_button = st.button("Analyze Market", use_container_width=True)
+    analyze_button = st.button(
+        "Analyze Market",
+        use_container_width=True,
+        disabled=not keys_provided,
+        help="Please provide both API keys to enable analysis." if not keys_provided else ""
+    )
 
-# --- Initialize Agent in Session State ---
-AGENT_VERSION = 2.0 # Match this with the version in AmmoAgent
-
-# Re-initialize the agent if it's not in the session state or if the version is outdated
-if (
-    "agent" not in st.session_state
-    or not hasattr(st.session_state.agent, "_version")
-    or st.session_state.agent._version < AGENT_VERSION
-):
-    st.session_state.agent = AmmoAgent(config=config, portfolio_value=portfolio_value)
-    st.session_state.results = None # Clear previous results
-
+# Initialize session state for results if it doesn't exist
 if "results" not in st.session_state:
     st.session_state.results = None
 
 # --- Main Dashboard ---
 if analyze_button:
+    # When the button is clicked, create a config object with the user-provided keys
+    config = Config(
+        finnhub_api_key=st.session_state.get('finnhub_api_key'),
+        news_api_key=st.session_state.get('news_api_key')
+    )
+
+    # Initialize the agent with the new config and latest portfolio value from the sidebar
+    agent = AmmoAgent(config=config, portfolio_value=portfolio_value)
+
     with st.spinner(f"AMMO Agent is analyzing {symbol}..."):
-        # Update agent with the latest portfolio value from sidebar
-        st.session_state.agent.risk_manager.portfolio_value = portfolio_value
-        st.session_state.results = st.session_state.agent.run_analysis(symbol, time_frame)
+        st.session_state.results = agent.run_analysis(symbol, time_frame)
 
 # --- Display Results ---
 if st.session_state.results:
