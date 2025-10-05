@@ -72,6 +72,10 @@ class DataCollector:
                 error_msg = f"Alpha Vantage API error for {symbol}: {data['Error Message']}"
                 logger.error(error_msg)
                 return pd.DataFrame(), error_msg
+            if "Information" in data:
+                error_msg = f"Alpha Vantage API Information: {data['Information']}. This typically means your API key is invalid or you have exceeded the call frequency limit."
+                logger.error(error_msg)
+                return pd.DataFrame(), error_msg
             if "Note" in data:
                 error_msg = f"Alpha Vantage API Note for {symbol}: {data['Note']}. This might mean you've exceeded the API call frequency. Please wait a minute and try again."
                 logger.error(error_msg)
