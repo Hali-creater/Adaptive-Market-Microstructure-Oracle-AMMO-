@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 import os
 
 from ammo_agent import AmmoAgent
-from config import Config
 from utils.helpers import format_currency
 from utils.constants import DEFAULT_SYMBOL
 
@@ -38,32 +37,6 @@ load_css(CSS_FILE)
 st.title("AMMO Trading Agent")
 st.markdown("An AI-powered agent for market analysis and trading recommendations.")
 
-# --- API Key Inputs ---
-st.subheader("API Configuration")
-st.markdown("Enter your API keys below to connect to live data sources.")
-
-col1, col2 = st.columns(2)
-with col1:
-    alpha_vantage_key = st.text_input(
-        "Alpha Vantage API Key",
-        type="password",
-        help="Get a free key from [Alpha Vantage](https://www.alphavantage.co/support/#api-key)"
-    )
-with col2:
-    news_api_key = st.text_input(
-        "NewsAPI Key",
-        type="password",
-        help="Get a free key from [NewsAPI.org](https://newsapi.org/)"
-    )
-
-# Store keys in session state to persist them
-if alpha_vantage_key:
-    st.session_state.alpha_vantage_key = alpha_vantage_key
-if news_api_key:
-    st.session_state.news_api_key = news_api_key
-
-keys_provided = hasattr(st.session_state, 'alpha_vantage_key') and hasattr(st.session_state, 'news_api_key')
-
 # --- Sidebar for User Inputs ---
 with st.sidebar:
     st.header("Settings")
@@ -75,12 +48,7 @@ with st.sidebar:
     )
     portfolio_value = st.number_input("Portfolio Value ($)", min_value=1000.0, value=100000.0, step=1000.0)
 
-    analyze_button = st.button(
-        "Analyze Market",
-        use_container_width=True,
-        disabled=not keys_provided,
-        help="Please provide both API keys to enable analysis." if not keys_provided else ""
-    )
+    analyze_button = st.button("Analyze Market", use_container_width=True)
 
 # Initialize session state for results if it doesn't exist
 if "results" not in st.session_state:
@@ -88,14 +56,8 @@ if "results" not in st.session_state:
 
 # --- Main Dashboard ---
 if analyze_button:
-    # When the button is clicked, create a config object with the user-provided keys
-    config = Config(
-        alpha_vantage_api_key=st.session_state.get('alpha_vantage_key'),
-        news_api_key=st.session_state.get('news_api_key')
-    )
-
-    # Initialize the agent with the new config and latest portfolio value from the sidebar
-    agent = AmmoAgent(config=config, portfolio_value=portfolio_value)
+    # Initialize the agent with the new simplified config and portfolio value
+    agent = AmmoAgent(portfolio_value=portfolio_value)
 
     with st.spinner(f"AMMO Agent is analyzing {symbol}..."):
         st.session_state.results = agent.run_analysis(symbol, time_frame)
@@ -126,7 +88,7 @@ if st.session_state.results:
         col1, col2, col3 = st.columns(3)
         col1.metric("Latest Price", format_currency(results['latest_price']))
         col2.metric("Market Personality", results['market_personality'])
-        col3.metric("Sentiment Score", f"{results['sentiment']['sentiment_score']:.2f}")
+        col3.metric("Sentiment Score", "N/A (Simulated)")
 
         # --- Price Chart ---
         st.subheader("Price History")
@@ -166,6 +128,7 @@ if st.session_state.results:
 
         with tab2:
             st.subheader("Sentiment Analysis Details")
+            st.info("**Note:** Sentiment analysis is currently running in a simulated mode and is not based on live news data.")
             st.write(results['sentiment']['summary'])
 
         with tab3:

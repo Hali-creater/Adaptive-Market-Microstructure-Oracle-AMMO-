@@ -12,15 +12,14 @@ class AmmoAgent:
     and a final trading recommendation.
     """
 
-    def __init__(self, config, portfolio_value: float = 100000.0):
+    def __init__(self, portfolio_value: float = 100000.0):
         """
         Initializes the agent and its modules.
         """
         logger.info("Initializing AMMO Trading Agent...")
         self._version = 2.0
-        self.config = config
-        self.data_collector = DataCollector(config=self.config)
-        self.sentiment_analyzer = SentimentAnalyzer(config=self.config)
+        self.data_collector = DataCollector()
+        self.sentiment_analyzer = SentimentAnalyzer()
         self.personality_detector = PersonalityDetector()
         self.risk_manager = RiskManager(portfolio_value=portfolio_value)
         self.analysis_results = {}
