@@ -2,11 +2,8 @@
 streamlit
 pandas
 numpy
-requests
+yfinance
 
 # For data visualization (optional but recommended)
 plotly
 matplotlib
-
-# For API key management
-python-dotenv
