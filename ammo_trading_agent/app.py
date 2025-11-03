@@ -46,6 +46,11 @@ with st.sidebar:
         ("Daily", "Weekly", "Intraday (60min)"),
         index=0  # Default to Daily
     )
+    source = st.selectbox(
+        "Data Source",
+        ("Yahoo Finance", "investing.com"),
+        index=0  # Default to Yahoo Finance
+    )
     portfolio_value = st.number_input("Portfolio Value ($)", min_value=1000.0, value=100000.0, step=1000.0)
 
     analyze_button = st.button("Analyze Market", use_container_width=True)
@@ -60,7 +65,7 @@ if analyze_button:
     agent = AmmoAgent(portfolio_value=portfolio_value)
 
     with st.spinner(f"AMMO Agent is analyzing {symbol}..."):
-        st.session_state.results = agent.run_analysis(symbol, time_frame)
+        st.session_state.results = agent.run_analysis(symbol, time_frame, source)
 
 # --- Display Results ---
 if st.session_state.results:
