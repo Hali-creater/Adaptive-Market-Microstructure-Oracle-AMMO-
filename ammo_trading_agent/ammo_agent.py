@@ -24,13 +24,14 @@ class AmmoAgent:
         self.risk_manager = RiskManager(portfolio_value=portfolio_value)
         self.analysis_results = {}
 
-    def run_analysis(self, symbol: str, time_frame: str):
+    def run_analysis(self, symbol: str, time_frame: str, source: str):
         """
         Runs a full analysis for a given stock symbol and time frame.
 
         Args:
             symbol (str): The stock symbol to analyze.
             time_frame (str): The time frame for the analysis (e.g., "Daily", "Weekly").
+            source (str): The data source to use.
 
         Returns:
             dict: A dictionary containing all analysis results.
@@ -38,7 +39,7 @@ class AmmoAgent:
         logger.info(f"--- Starting {time_frame} Analysis for {symbol} ---")
 
         # 1. Collect Data
-        price_data, error_message = self.data_collector.get_price_data(symbol, time_frame, output_size="compact")
+        price_data, error_message = self.data_collector.get_price_data(symbol, time_frame, source)
         if error_message:
             logger.error(f"Data collection failed for {symbol} ({time_frame}): {error_message}")
             return {"error": error_message}

@@ -3,6 +3,7 @@ streamlit
 pandas
 numpy
 yfinance
+investiny
 
 # For data visualization (optional but recommended)
 plotly
